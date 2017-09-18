@@ -1,22 +1,9 @@
-# Compiled class file
-*.class
+# Ignore everything
+*
 
-# IDEA files
-.idea
-*.iml
-*.ipr
-*.iws
+# But not Java files...
+!.gitignore
+!*.java
 
-# Log file
-*.log
-
-# Package Files #
-*.jar
-*.war
-*.ear
-*.zip
-*.tar.gz
-*.rar
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
+# ...even if they are in subdirectories
+!*/
