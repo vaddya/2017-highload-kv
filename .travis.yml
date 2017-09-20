@@ -3,6 +3,10 @@ language: java
 dist: trusty
 jdk: openjdk8
 
+env:
+   global:
+   - _JAVA_OPTIONS="-Xmx1g"
+
 script: ./gradlew --info test
 
 before_cache:
