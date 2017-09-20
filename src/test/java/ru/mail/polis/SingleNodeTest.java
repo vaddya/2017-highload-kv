@@ -25,7 +25,7 @@ public class SingleNodeTest extends TestBase {
     private static File data;
     private static KVService storage;
     @Rule
-    public final Timeout globalTimeout = Timeout.seconds(1);
+    public final Timeout globalTimeout = Timeout.seconds(3);
 
     @BeforeClass
     public static void beforeAll() throws IOException, InterruptedException {
