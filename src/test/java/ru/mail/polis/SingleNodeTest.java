@@ -102,6 +102,20 @@ public class SingleNodeTest extends TestBase {
     }
 
     @Test
+    public void insertEmpty() throws Exception {
+        final String key = randomKey();
+        final byte[] value = new byte[0];
+
+        // Insert
+        assertEquals(201, upsert(key, value).getStatusLine().getStatusCode());
+
+        // Check
+        final HttpResponse response = get(key);
+        assertEquals(200, response.getStatusLine().getStatusCode());
+        assertArrayEquals(value, payloadOf(response));
+    }
+
+    @Test
     public void lifecycle2keys() throws Exception {
         final String key1 = randomKey();
         final byte[] value1 = randomValue();
@@ -151,6 +165,24 @@ public class SingleNodeTest extends TestBase {
         final HttpResponse response = get(key);
         assertEquals(200, response.getStatusLine().getStatusCode());
         assertArrayEquals(value2, payloadOf(response));
+    }
+
+    @Test
+    public void upsertEmpty() throws Exception {
+        final String key = randomKey();
+        final byte[] value = randomValue();
+        final byte[] empty = new byte[0];
+
+        // Insert value
+        assertEquals(201, upsert(key, value).getStatusLine().getStatusCode());
+
+        // Insert empty
+        assertEquals(201, upsert(key, empty).getStatusLine().getStatusCode());
+
+        // Check empty
+        final HttpResponse response = get(key);
+        assertEquals(200, response.getStatusLine().getStatusCode());
+        assertArrayEquals(empty, payloadOf(response));
     }
 
     @Test
