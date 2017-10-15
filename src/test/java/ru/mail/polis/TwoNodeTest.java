@@ -55,24 +55,24 @@ public class TwoNodeTest extends ClusterTestBase {
 
     @Test
     public void tooSmallRF() throws Exception {
-        assertEquals(400, get(0, randomKey(), 0).getStatusLine().getStatusCode());
-        assertEquals(400, upsert(0, randomKey(), randomValue(), 0).getStatusLine().getStatusCode());
-        assertEquals(400, delete(0, randomKey(), 0).getStatusLine().getStatusCode());
+        assertEquals(400, get(0, randomKey(), 0, 2).getStatusLine().getStatusCode());
+        assertEquals(400, upsert(0, randomKey(), randomValue(), 0, 2).getStatusLine().getStatusCode());
+        assertEquals(400, delete(0, randomKey(), 0, 2).getStatusLine().getStatusCode());
     }
 
     @Test
     public void tooBigRF() throws Exception {
-        assertEquals(400, get(0, randomKey(), 3).getStatusLine().getStatusCode());
-        assertEquals(400, upsert(0, randomKey(), randomValue(), 3).getStatusLine().getStatusCode());
-        assertEquals(400, delete(0, randomKey(), 3).getStatusLine().getStatusCode());
+        assertEquals(400, get(0, randomKey(), 3, 2).getStatusLine().getStatusCode());
+        assertEquals(400, upsert(0, randomKey(), randomValue(), 3, 2).getStatusLine().getStatusCode());
+        assertEquals(400, delete(0, randomKey(), 3, 2).getStatusLine().getStatusCode());
     }
 
     @Test
     public void unreachableRF() throws Exception {
         storage0.stop();
-        assertEquals(504, get(1, randomKey(), 2).getStatusLine().getStatusCode());
-        assertEquals(504, upsert(1, randomKey(), randomValue(), 2).getStatusLine().getStatusCode());
-        assertEquals(504, delete(1, randomKey(), 2).getStatusLine().getStatusCode());
+        assertEquals(504, get(1, randomKey(), 2, 2).getStatusLine().getStatusCode());
+        assertEquals(504, upsert(1, randomKey(), randomValue(), 2, 2).getStatusLine().getStatusCode());
+        assertEquals(504, delete(1, randomKey(), 2, 2).getStatusLine().getStatusCode());
     }
 
     @Test
@@ -81,10 +81,10 @@ public class TwoNodeTest extends ClusterTestBase {
         final byte[] value = randomValue();
 
         // Insert
-        assertEquals(201, upsert(0, key, value, 1).getStatusLine().getStatusCode());
+        assertEquals(201, upsert(0, key, value, 1, 2).getStatusLine().getStatusCode());
 
         // Check
-        final HttpResponse response = get(1, key, 2);
+        final HttpResponse response = get(1, key, 2, 2);
         assertEquals(200, response.getStatusLine().getStatusCode());
         assertArrayEquals(value, payloadOf(response));
     }
@@ -95,10 +95,10 @@ public class TwoNodeTest extends ClusterTestBase {
         final byte[] value = randomValue();
 
         // Insert
-        assertEquals(201, upsert(0, key, value, 2).getStatusLine().getStatusCode());
+        assertEquals(201, upsert(0, key, value, 2, 2).getStatusLine().getStatusCode());
 
         // Check
-        final HttpResponse response = get(1, key, 1);
+        final HttpResponse response = get(1, key, 1, 2);
         assertEquals(200, response.getStatusLine().getStatusCode());
         assertArrayEquals(value, payloadOf(response));
     }
@@ -109,18 +109,18 @@ public class TwoNodeTest extends ClusterTestBase {
         final byte[] value = randomValue();
 
         // Insert
-        assertEquals(201, upsert(0, key, value, 2).getStatusLine().getStatusCode());
+        assertEquals(201, upsert(0, key, value, 2, 2).getStatusLine().getStatusCode());
 
         // Check
-        HttpResponse response = get(1, key, 1);
+        HttpResponse response = get(1, key, 1, 2);
         assertEquals(200, response.getStatusLine().getStatusCode());
         assertArrayEquals(value, payloadOf(response));
 
         // Delete
-        assertEquals(202, delete(0, key, 2).getStatusLine().getStatusCode());
+        assertEquals(202, delete(0, key, 2, 2).getStatusLine().getStatusCode());
 
         // Check
-        response = get(1, key, 1);
+        response = get(1, key, 1, 2);
         assertEquals(404, response.getStatusLine().getStatusCode());
     }
 
@@ -133,14 +133,14 @@ public class TwoNodeTest extends ClusterTestBase {
         storage1.stop();
 
         // Insert
-        assertEquals(201, upsert(0, key, value, 1).getStatusLine().getStatusCode());
+        assertEquals(201, upsert(0, key, value, 1, 2).getStatusLine().getStatusCode());
 
         // Start node 1
         storage1 = KVServiceFactory.create(port1, data1, endpoints);
         storage1.start();
 
         // Check
-        final HttpResponse response = get(1, key, 2);
+        final HttpResponse response = get(1, key, 2, 2);
         assertEquals(200, response.getStatusLine().getStatusCode());
         assertArrayEquals(value, payloadOf(response));
     }

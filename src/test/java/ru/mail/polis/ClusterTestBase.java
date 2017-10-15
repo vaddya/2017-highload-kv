@@ -20,30 +20,34 @@ abstract class ClusterTestBase extends TestBase {
     private String url(
             final int node,
             @NotNull final String id,
-            final int rf) {
+            final int ack,
+            final int from) {
         final String endpoint = Iterators.get(endpoints.iterator(), node);
-        return endpoint + "/v0/entity?id=" + id + (rf == 2 ? "" : "&replicas=" + rf);
+        return endpoint + "/v0/entity?id=" + id + "&replicas=" + ack + "/" + from;
     }
 
     HttpResponse get(
             final int node,
             @NotNull final String key,
-            final int rf) throws IOException {
-        return Request.Get(url(node, key, rf)).execute().returnResponse();
+            final int ack,
+            final int from) throws IOException {
+        return Request.Get(url(node, key, ack, from)).execute().returnResponse();
     }
 
     HttpResponse delete(
             final int node,
             @NotNull final String key,
-            final int rf) throws IOException {
-        return Request.Delete(url(node, key, rf)).execute().returnResponse();
+            final int ack,
+            final int from) throws IOException {
+        return Request.Delete(url(node, key, ack, from)).execute().returnResponse();
     }
 
     HttpResponse upsert(
             final int node,
             @NotNull final String key,
             @NotNull final byte[] data,
-            final int rf) throws IOException {
-        return Request.Put(url(node, key, rf)).bodyByteArray(data).execute().returnResponse();
+            final int ack,
+            final int from) throws IOException {
+        return Request.Put(url(node, key, ack, from)).bodyByteArray(data).execute().returnResponse();
     }
 }
