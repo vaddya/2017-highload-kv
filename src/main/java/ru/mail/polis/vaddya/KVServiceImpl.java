@@ -62,17 +62,6 @@ public class KVServiceImpl implements KVService {
         }
     }
 
-    private byte[] readData(HttpExchange http) throws IOException {
-        try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
-            byte[] buffer = new byte[1024];
-            for (int len; (len = http.getRequestBody().read(buffer)) != -1; ) {
-                os.write(buffer, 0, len);
-            }
-            os.flush();
-            return os.toByteArray();
-        }
-    }
-
     private void processEntityPut(@NotNull HttpExchange http,
                                   @NotNull String id) throws IOException {
         try {
@@ -87,7 +76,7 @@ public class KVServiceImpl implements KVService {
     private void processEntityDelete(@NotNull HttpExchange http,
                                      @NotNull String id) throws IOException {
         try {
-            this.dao.delete(id);
+            dao.delete(id);
             sendResponse(http, 202, null);
         } catch (IllegalArgumentException e) {
             sendResponse(http, 400, e.getMessage().getBytes());
@@ -123,6 +112,17 @@ public class KVServiceImpl implements KVService {
             throw new IllegalArgumentException("Query is invalid");
         }
         return query.substring(QUERY_PREFIX.length());
+    }
+
+    private byte[] readData(HttpExchange http) throws IOException {
+        try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[1024];
+            for (int len; (len = http.getRequestBody().read(buffer)) != -1; ) {
+                os.write(buffer, 0, len);
+            }
+            os.flush();
+            return os.toByteArray();
+        }
     }
 
     private void sendResponse(@NotNull HttpExchange http,
