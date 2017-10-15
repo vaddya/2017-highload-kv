@@ -2,7 +2,10 @@ package ru.mail.polis.vaddya;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.io.*;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.NoSuchElementException;
 
 public class DAOImpl implements DAO {
@@ -13,41 +16,31 @@ public class DAOImpl implements DAO {
         this.dir = dir;
     }
 
-    private File getFile(String filename) {
-        if (filename.isEmpty()) {
+    private Path getPath(String id) {
+        if (id.isEmpty()) {
             throw new IllegalArgumentException("ID is empty");
         }
-        return new File(dir, filename);
+        return Paths.get(dir, id);
     }
 
     @NotNull
     @Override
     public byte[] get(@NotNull String id) throws NoSuchElementException, IllegalArgumentException, IOException {
-        File file = getFile(id);
-        if (!file.exists()) {
+        Path path = getPath(id);
+        if (!Files.exists(path)) {
             throw new NoSuchElementException("Invalid ID: " + id);
         }
-        try (InputStream is = new FileInputStream(file)) {
-            int size = (int) file.length();
-            byte[] value = new byte[size];
-            if (is.read(value) != size) {
-                throw new IOException("Cannot read in one go");
-            }
-            return value;
-        }
+        return Files.readAllBytes(getPath(id));
     }
 
     @Override
     public void upsert(@NotNull String id, @NotNull byte[] value) throws IllegalArgumentException, IOException {
-        File file = getFile(id);
-        try (OutputStream os = new FileOutputStream(file)) {
-            os.write(value);
-        }
+        Files.write(getPath(id), value);
     }
 
     @Override
     public void delete(@NotNull String id) throws IllegalArgumentException, IOException {
-        getFile(id).delete();
+        Files.deleteIfExists(getPath(id));
     }
 
 }
