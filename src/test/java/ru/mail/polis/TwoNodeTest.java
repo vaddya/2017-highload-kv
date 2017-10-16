@@ -144,4 +144,27 @@ public class TwoNodeTest extends ClusterTestBase {
         assertEquals(200, response.getStatusLine().getStatusCode());
         assertArrayEquals(value, payloadOf(response));
     }
+
+    @Test
+    public void missedDelete() throws Exception {
+        final String key = randomKey();
+        final byte[] value = randomValue();
+
+        // Insert
+        assertEquals(201, upsert(0, key, value, 2, 2).getStatusLine().getStatusCode());
+
+        // Stop node 0
+        storage0.stop();
+
+        // Delete
+        assertEquals(202, delete(1, key, 1, 2).getStatusLine().getStatusCode());
+
+        // Start node 0
+        storage0 = KVServiceFactory.create(port0, data0, endpoints);
+        storage0.start();
+
+        // Check
+        final HttpResponse response = get(0, key, 2, 2);
+        assertEquals(404, response.getStatusLine().getStatusCode());
+    }
 }
