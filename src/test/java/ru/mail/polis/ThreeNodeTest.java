@@ -302,7 +302,7 @@ public class ThreeNodeTest extends ClusterTestBase {
         storage0.start();
 
         // Check node 0
-        if (get(0, key, 1, 1).getStatusLine().getStatusCode() == 200) {
+        if (get(0, key, 1, 2).getStatusLine().getStatusCode() == 200) {
             copies++;
         }
 
@@ -314,7 +314,7 @@ public class ThreeNodeTest extends ClusterTestBase {
         storage1.start();
 
         // Check node 1
-        if (get(1, key, 1, 1).getStatusLine().getStatusCode() == 200) {
+        if (get(1, key, 1, 2).getStatusLine().getStatusCode() == 200) {
             copies++;
         }
 
@@ -326,7 +326,7 @@ public class ThreeNodeTest extends ClusterTestBase {
         storage2.start();
 
         // Check node 2
-        if (get(2, key, 1, 1).getStatusLine().getStatusCode() == 200) {
+        if (get(2, key, 1, 2).getStatusLine().getStatusCode() == 200) {
             copies++;
         }
 
