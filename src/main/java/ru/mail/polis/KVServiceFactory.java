@@ -49,7 +49,7 @@ final class KVServiceFactory {
             throw new IllegalArgumentException("Path is not a directory: " + data);
         }
 
-        return new KVServiceImpl(port, new DAOImpl(data.getPath()));
+        return new KVServiceImpl(port, new DAOImpl(data.getPath()), topology);
     }
 
 }
