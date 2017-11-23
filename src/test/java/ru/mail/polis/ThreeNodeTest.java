@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -23,7 +24,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class ThreeNodeTest extends ClusterTestBase {
     @Rule
-    public final Timeout globalTimeout = Timeout.seconds(3);
+    public final Timeout globalTimeout = Timeout.seconds(10);
     private int port0;
     private int port1;
     private int port2;
@@ -126,6 +127,9 @@ public class ThreeNodeTest extends ClusterTestBase {
         assertEquals(200, response.getStatusLine().getStatusCode());
         assertArrayEquals(value1, payloadOf(response));
 
+        // Help implementors with second precision for conflict resolution
+        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+
         // Insert 2
         assertEquals(201, upsert(2, key, value2, 2, 3).getStatusLine().getStatusCode());
 
@@ -222,5 +226,121 @@ public class ThreeNodeTest extends ClusterTestBase {
         // Check
         response = get(1, key, 2, 3);
         assertEquals(404, response.getStatusLine().getStatusCode());
+    }
+
+    @Test
+    public void respectRF1() throws Exception {
+        final String key = randomKey();
+        final byte[] value = randomValue();
+
+        // Insert
+        assertEquals(201, upsert(0, key, value, 1, 1).getStatusLine().getStatusCode());
+
+        int copies = 0;
+
+        // Stop all nodes
+        storage0.stop();
+        storage1.stop();
+        storage2.stop();
+
+        // Start node 0
+        storage0 = KVServiceFactory.create(port0, data0, endpoints);
+        storage0.start();
+
+        // Check node 0
+        if (get(0, key, 1, 1).getStatusLine().getStatusCode() == 200) {
+            copies++;
+        }
+
+        // Stop node 0
+        storage0.stop();
+
+        // Start node 1
+        storage1 = KVServiceFactory.create(port1, data1, endpoints);
+        storage1.start();
+
+        // Check node 1
+        if (get(1, key, 1, 1).getStatusLine().getStatusCode() == 200) {
+            copies++;
+        }
+
+        // Stop node 1
+        storage1.stop();
+
+        // Start node 2
+        storage2 = KVServiceFactory.create(port2, data2, endpoints);
+        storage2.start();
+
+        // Check node 2
+        if (get(2, key, 1, 1).getStatusLine().getStatusCode() == 200) {
+            copies++;
+        }
+
+        // Start node 0 & 1
+        storage0 = KVServiceFactory.create(port0, data0, endpoints);
+        storage0.start();
+        storage1 = KVServiceFactory.create(port1, data1, endpoints);
+        storage1.start();
+
+        // Check
+        assertEquals(1, copies);
+    }
+
+    @Test
+    public void respectRF2() throws Exception {
+        final String key = randomKey();
+        final byte[] value = randomValue();
+
+        // Insert
+        assertEquals(201, upsert(0, key, value, 2, 2).getStatusLine().getStatusCode());
+
+        int copies = 0;
+
+        // Stop all nodes
+        storage0.stop();
+        storage1.stop();
+        storage2.stop();
+
+        // Start node 0
+        storage0 = KVServiceFactory.create(port0, data0, endpoints);
+        storage0.start();
+
+        // Check node 0
+        if (get(0, key, 1, 2).getStatusLine().getStatusCode() == 200) {
+            copies++;
+        }
+
+        // Stop node 0
+        storage0.stop();
+
+        // Start node 1
+        storage1 = KVServiceFactory.create(port1, data1, endpoints);
+        storage1.start();
+
+        // Check node 1
+        if (get(1, key, 1, 2).getStatusLine().getStatusCode() == 200) {
+            copies++;
+        }
+
+        // Stop node 1
+        storage1.stop();
+
+        // Start node 2
+        storage2 = KVServiceFactory.create(port2, data2, endpoints);
+        storage2.start();
+
+        // Check node 2
+        if (get(2, key, 1, 2).getStatusLine().getStatusCode() == 200) {
+            copies++;
+        }
+
+        // Start node 0 & 1
+        storage0 = KVServiceFactory.create(port0, data0, endpoints);
+        storage0.start();
+        storage1 = KVServiceFactory.create(port1, data1, endpoints);
+        storage1.start();
+
+        // Check
+        assertEquals(2, copies);
     }
 }

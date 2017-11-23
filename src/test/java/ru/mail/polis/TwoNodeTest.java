@@ -167,4 +167,42 @@ public class TwoNodeTest extends ClusterTestBase {
         final HttpResponse response = get(0, key, 2, 2);
         assertEquals(404, response.getStatusLine().getStatusCode());
     }
+
+    @Test
+    public void respectRF() throws Exception {
+        final String key = randomKey();
+        final byte[] value = randomValue();
+
+        // Insert
+        assertEquals(201, upsert(0, key, value, 1, 1).getStatusLine().getStatusCode());
+
+        int copies = 0;
+
+        // Stop node 0
+        storage0.stop();
+
+        // Check
+        if (get(1, key, 1, 1).getStatusLine().getStatusCode() == 200) {
+            copies++;
+        }
+
+        // Start node 0
+        storage0 = KVServiceFactory.create(port0, data0, endpoints);
+        storage0.start();
+
+        // Stop node 1
+        storage1.stop();
+
+        // Check
+        if (get(0, key, 1, 1).getStatusLine().getStatusCode() == 200) {
+            copies++;
+        }
+
+        // Start node 1
+        storage1 = KVServiceFactory.create(port1, data1, endpoints);
+        storage1.start();
+
+        // Check
+        assertEquals(1, copies);
+    }
 }
