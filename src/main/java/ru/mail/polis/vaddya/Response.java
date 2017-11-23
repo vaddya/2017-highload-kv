@@ -8,6 +8,7 @@ class Response {
     static final int BAD_REQUEST = 400;
     static final int NOT_FOUND = 404;
     static final int NOT_ALLOWED = 405;
+    static final int SERVER_ERROR = 500;
     static final int NOT_ENOUGH_REPLICAS = 504;
 
     private final int code;
@@ -32,7 +33,7 @@ class Response {
         return code;
     }
 
-    boolean hasDate() {
+    boolean hasData() {
         return data != null;
     }
 
