@@ -44,7 +44,7 @@ public class KVServiceImpl implements KVService {
     @NotNull
     private final List<String> topology;
 
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor;
 
     public KVServiceImpl(int port,
                          @NotNull DAO dao,
@@ -52,6 +52,7 @@ public class KVServiceImpl implements KVService {
         this.server = HttpServer.create(new InetSocketAddress(port), 0);
         this.dao = dao;
         this.topology = new ArrayList<>(topology);
+        this.executor = Executors.newFixedThreadPool(topology.size());
 
         server.createContext(URL_STATUS, this::processStatus);
         server.createContext(URL_INNER, this::processInner);
@@ -65,7 +66,7 @@ public class KVServiceImpl implements KVService {
 
     @Override
     public void stop() {
-        server.stop(0);
+        server.stop(1);
     }
 
     private void processStatus(@NotNull HttpExchange http) throws IOException {
@@ -283,13 +284,8 @@ public class KVServiceImpl implements KVService {
                         throw new IllegalArgumentException(METHOD_IS_NOT_ALLOWED);
                 }
             } else {
-                if (method == PUT) {
-                    future = new FutureTask<>(
-                            () -> makeRequest(method, node + URL_INNER, "?id=" + params.getId(), data));
-                } else {
-                    future = new FutureTask<>(
-                            () -> makeRequest(method, node + URL_INNER, "?id=" + params.getId(), null));
-                }
+                future = new FutureTask<>(
+                        () -> makeRequest(method, node + URL_INNER, "?id=" + params.getId(), data));
             }
             futures.add(future);
             executor.execute(future);
@@ -334,8 +330,7 @@ public class KVServiceImpl implements KVService {
 
     private List<String> getNodesById(@NotNull String id, int from) {
         List<String> nodes = new ArrayList<>();
-        int hash = id.hashCode();
-        hash = hash > 0 ? hash : -hash;
+        int hash = Math.abs(id.hashCode());
         for (int i = 0; i < from; i++) {
             int idx = (hash + i) % topology.size();
             nodes.add(topology.get(idx));
