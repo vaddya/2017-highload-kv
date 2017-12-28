@@ -15,10 +15,10 @@ import java.net.InetSocketAddress;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
 
 import static ru.mail.polis.vaddya.KVServiceImpl.HttpMethod.*;
 import static ru.mail.polis.vaddya.Response.*;
@@ -43,8 +43,8 @@ public class KVServiceImpl implements KVService {
     private final DAO dao;
     @NotNull
     private final List<String> topology;
-
-    private final ExecutorService executor;
+    @NotNull
+    private final CompletionService<Response> completionService;
 
     public KVServiceImpl(int port,
                          @NotNull DAO dao,
@@ -52,7 +52,8 @@ public class KVServiceImpl implements KVService {
         this.server = HttpServer.create(new InetSocketAddress(port), 0);
         this.dao = dao;
         this.topology = new ArrayList<>(topology);
-        this.executor = Executors.newFixedThreadPool(topology.size());
+        Executor executor = Executors.newFixedThreadPool(topology.size());
+        this.completionService = new ExecutorCompletionService<>(executor);
 
         server.createContext(URL_STATUS, this::processStatus);
         server.createContext(URL_INNER, this::processInner);
@@ -162,14 +163,14 @@ public class KVServiceImpl implements KVService {
         try {
             String id = params.getId();
             List<String> nodes = getNodesById(id, params.getFrom());
-            List<FutureTask<Response>> futures = executeFutures(GET, params, nodes, null);
+            executeFutures(GET, params, nodes, null);
 
             int ok = 0;
             int notFound = 0;
             byte[] value = null;
-            for (Future<Response> future : futures) {
+            for (int i = 0; i < params.getFrom(); i++) {
                 try {
-                    Response resp = future.get();
+                    Response resp = completionService.take().get();
                     if (resp.getCode() == OK) {
                         ok++;
                         value = resp.getData();
@@ -203,15 +204,15 @@ public class KVServiceImpl implements KVService {
     }
 
     private Response processEntityPut(@NotNull QueryParams params,
-                                      @Nullable byte[] data) throws IOException {
+                                      @Nullable byte[] data) {
         try {
             List<String> nodes = getNodesById(params.getId(), params.getFrom());
-            List<FutureTask<Response>> futures = executeFutures(PUT, params, nodes, data);
+            executeFutures(PUT, params, nodes, data);
 
             int ok = 0;
-            for (Future<Response> future : futures) {
+            for (int i = 0; i < params.getFrom() && ok < params.getAck(); i++) {
                 try {
-                    Response resp = future.get();
+                    Response resp = completionService.take().get();
                     if (resp.getCode() == CREATED) {
                         ok++;
                     }
@@ -232,15 +233,15 @@ public class KVServiceImpl implements KVService {
         }
     }
 
-    private Response processEntityDelete(@NotNull QueryParams params) throws IOException {
+    private Response processEntityDelete(@NotNull QueryParams params) {
         try {
             List<String> nodes = getNodesById(params.getId(), params.getFrom());
-            List<FutureTask<Response>> futures = executeFutures(DELETE, params, nodes, null);
+            executeFutures(DELETE, params, nodes, null);
 
             int ok = 0;
-            for (Future<Response> future : futures) {
+            for (int i = 0; i < params.getFrom() && ok < params.getAck(); i++) {
                 try {
-                    Response resp = future.get();
+                    Response resp = completionService.take().get();
                     if (resp.getCode() == ACCEPTED) {
                         ok++;
                     }
@@ -261,36 +262,31 @@ public class KVServiceImpl implements KVService {
         }
     }
 
-    private List<FutureTask<Response>> executeFutures(@NotNull HttpMethod method,
-                                                      @NotNull QueryParams params,
-                                                      @NotNull List<String> nodes,
-                                                      @Nullable byte[] data) {
-        List<FutureTask<Response>> futures = new ArrayList<>();
+    private void executeFutures(@NotNull HttpMethod method,
+                                @NotNull QueryParams params,
+                                @NotNull List<String> nodes,
+                                @Nullable byte[] data) {
         String self = URL_SERVER + ":" + server.getAddress().getPort();
         for (String node : nodes) {
-            FutureTask<Response> future;
             if (node.equals(self)) {
                 switch (method) {
                     case GET:
-                        future = new FutureTask<>(() -> processInnerGet(params));
+                        completionService.submit(() -> processInnerGet(params));
                         break;
                     case PUT:
-                        future = new FutureTask<>(() -> processInnerPut(params, data));
+                        completionService.submit(() -> processInnerPut(params, data));
                         break;
                     case DELETE:
-                        future = new FutureTask<>(() -> processInnerDelete(params));
+                        completionService.submit(() -> processInnerDelete(params));
                         break;
                     default:
                         throw new IllegalArgumentException(METHOD_IS_NOT_ALLOWED);
                 }
             } else {
-                future = new FutureTask<>(
+                completionService.submit(
                         () -> makeRequest(method, node + URL_INNER, "?id=" + params.getId(), data));
             }
-            futures.add(future);
-            executor.execute(future);
         }
-        return futures;
     }
 
     private QueryParams parseQuery(@NotNull String query) {
@@ -358,8 +354,7 @@ public class KVServiceImpl implements KVService {
             URL url = new URL(link + params);
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod(method.toString());
-            conn.setDoInput(true);
-            conn.setDoOutput(true);
+            conn.setDoOutput(method == PUT);
             conn.connect();
 
             if (method == PUT) {
